@@ -1,6 +1,9 @@
 import pygame
 import sys
+import time
 from random import randint
+from random import choice
+
 
 # Pygame initialisieren
 pygame.init()
@@ -19,10 +22,14 @@ WHITE = (255, 255, 255)
 BLACK = (0, 0, 0)
 GREY = (100, 100, 100)
 RED = (255, 0, 0)
+YELLOW = (255, 215, 0)
 
 # Spieler Variablen
 player_posx = screen_width / 2
+
 player_posy = screen_height - 100
+player_startposx = screen_width / 2
+player_startposy = screen_height - 100
 player_x = 50
 player_y = 70
 player_vel = 200
@@ -62,6 +69,34 @@ shot_posx = player_posx + (size // 2) - (size // 2)
 shot_sprite = pygame.image.load('shot.png')
 shot_sprite = pygame.transform.scale(shot_sprite, (size, size))
 
+# Punkte
+stars = []
+points = 0
+star_image = pygame.image.load('star.png')
+star_image = pygame.transform.scale(star_image, (size, size))
+
+# Stones
+falling_stones = []
+
+def reset():
+    global player_posx, player_posy
+    player_posx = player_startposx
+    player_posy = player_startposy
+    new_star = place_star_on_top_platform()
+    initialize_bricks()
+    draw_brick()    
+    falling_stones.clear()  
+    stars.clear()
+    stars.append(new_star)
+def blink_color(color):
+    # Fülle den Bildschirm mit der angegebenen Farbe
+    screen.fill(color)
+    pygame.display.flip()  # Aktualisiere das Display, um die Farbe anzuzeigen
+    time.sleep(0.2)  # Lass den Bildschirm für 0,1 Sekunden in dieser Farbe stehen
+    # Danach wird der normale Bildschirm wieder gezeichnet (hier weiß als Beispiel)
+    screen.fill(WHITE)  # Oder deine Szene/Standardfarbe
+    pygame.display.flip()  # Aktualisiere das Display erneut
+# Draw all the stuff
 def drawplayer():
     global player, player_sprite, y_vel
     if y_vel > 0:
@@ -76,19 +111,29 @@ def drawground():
 def initialize_bricks():
     global bricks
     bricks = []
+    brick_posy = screen_height - ground_y  # Beginne am unteren Bildschirmrand
+
     for row in range(rows):
-        # Zufällige X-Position für die gesamte Reihe
+        if brick_posy < 0:  # Abbruchbedingung: Stoppe, wenn die y-Position negativ ist (über den oberen Rand hinaus)
+            break
+
+        # Zufällige horizontale Position und Abstand zwischen den Plattformen
         brick_posx = initial_brick_posx + randint(-150, 150)  
-        brick_posy = initial_brick_posy - row * (brick_y + 100)  # Y-Position für die aktuelle Reihe
-        num_bricks = randint (3, brick_number)
+        num_bricks = randint(2, brick_number)  # Anzahl der Bricks pro Reihe
+        row_spacing = randint(100, 150)  # Zufälliger Abstand zwischen den Reihen
+
         for _ in range(num_bricks):
+            # Setze die Bricks nicht zu dicht aneinander
             brick_rect = pygame.Rect(brick_posx, brick_posy, brick_x, brick_y)
             bricks.append(brick_rect)
-            brick_posx += 300  # Abstand zwischen den Bricks in der gleichen Reihe
+            brick_posx += randint(300, 400)  # Zufälliger Abstand zwischen den Bricks in der gleichen Reihe
+        
+        brick_posy -= (brick_y + row_spacing)  # Zufälliger Abstand zur nächsten Reihe
 def draw_brick():
     for brick in bricks:
         pygame.draw.rect(screen, BLACK, brick)
 
+# Player
 def jump():
     global y_vel, is_jumping, player_posy, on_ground, is_jumping
 
@@ -100,18 +145,17 @@ def jump():
         print("Jump!")
 def move():
     global player_posx, player_sprite, moving_right
-
-    if keys_pressed[pygame.K_a] and player_posx > 20:
+    border = 10
+    if keys_pressed[pygame.K_a] and player_posx > border:
         player_posx -= x_vel
         moving_right = False
-    elif keys_pressed[pygame.K_d] and player_posx < screen_width - player_x - 20:
+    elif keys_pressed[pygame.K_d] and player_posx < screen_width - player_x - border:
         player_posx += x_vel
         moving_right = True
     else:
         ...
     if not moving_right:
         player_sprite = pygame.transform.flip(player_sprite, True, False)
-
 def shoot(current_time):
     global last_shot_time
     if keys_pressed[pygame.K_SPACE] and current_time - last_shot_time >= delay:
@@ -142,7 +186,71 @@ def draw_shots():
     for shot in shots:
         screen.blit(shot_sprite, (shot['rect'].x, shot['rect'].y))  # Blit das Schussbild an die aktuelle Position
 
+# Point counter
+def initialize_points(num_stars):
+    global stars
+    stars = []  # Leere Liste, um Sterne hinzuzufügen
+    for _ in range(num_stars):
+        star_rect = place_star_on_top_platform()  # Setze den Stern auf eine Plattform
+        stars.append(star_rect)
+def draw_points():
+    # Sterne zeichnen
+    for star in stars:  # Zeichne alle Sterne aus der Liste
+        pygame.draw.rect(screen, (255, 215, 0), star)  # Goldene Farbe für die Sterne
+        screen.blit(star_image, (star.x, star.y))
+        print(star.x,",", star.y)
+def count_points():
+    global points
+    player_rect = pygame.Rect(player_posx, player_posy, player_x, player_y)
+    for star in stars[:]:  # Kopie der Liste für sicheres Entfernen
+        if player_rect.colliderect(star):  # Kollision überprüfen
+            stars.remove(star)  # Stern entfernen
+            points += 1  # Punkte erhöhen
+            print(f"Points: {points}")
+            # Setze einen neuen Stern auf eine der letzten (höchsten) Plattformen
+            blink_color(YELLOW)
+            reset()
 
+def place_star_on_top_platform():
+    if len(bricks) > 0:
+        top_platforms = bricks[-5:]  # Die letzten 5 Plattformen (höchste)
+        selected_platform = choice(top_platforms)
+
+        # Setze den Stern auf die ausgewählte Plattform
+        star_rect = pygame.Rect(
+            selected_platform.x + selected_platform.width // 2 - size // 2,  # Mitte der Plattform
+            selected_platform.y - size,  # Oberhalb der Plattform
+            size, size  # Größe des Sterns
+        )
+
+        # Überprüfe, ob der Stern außerhalb des Bildschirms ist und korrigiere die Position
+        if star_rect.x < 0:
+            star_rect.x = 0  # Setze den Stern an den linken Rand
+        elif star_rect.right > screen_width:
+            star_rect.x = screen_width - size  # Setze den Stern an den rechten Rand
+
+        if star_rect.y < 0:
+            star_rect.y = 0  # Setze den Stern an den oberen Rand
+
+        return star_rect
+
+    # Stern auf eine der obersten Plattformen setzen
+    # Wähle zufällig eine der obersten Plattformen aus
+    if len(bricks) > 0:
+        top_platforms = bricks[-5:]  # Nehme die ersten 5 Plattformen als "oberste"
+        selected_platform = choice(top_platforms)  # Wähle eine Plattform aus
+
+        # Setze den Stern auf die ausgewählte Plattform
+        star_rect = pygame.Rect(
+            selected_platform.x + selected_platform.width // 2 - size // 2,  # Mitte der Plattform
+            selected_platform.y - size,  # Oberhalb der Plattform
+            size, size  # Größe des Sterns
+        )
+        return star_rect
+
+
+
+# Collision
 def collide_brick():
     global on_ground, player_posy, y_vel, is_jumping, player_posx
     on_ground = False
@@ -193,15 +301,41 @@ def collide_shots():
                 break  # Bei Kollision mit einer Plattform abbrechen
     ...           
 
+# Falling Stones
+def initialize_stone():
+    stone_posx = player_posx + randint(-50, 50)  # Zufällige X-Position für den Stein
+    stone_rect = pygame.Rect(stone_posx, 0, 50, 50)  # Steingröße (50x50) und Startposition oben
+    falling_stones.append(stone_rect)
+def move_stones():
+    # Steine bewegen
+    for stone in falling_stones[:]:  # Kopie der Liste
+        stone.y += 5  # Geschwindigkeit des fallenden Steins
+        if stone.y > screen_height:  # Stein aus dem Bildschirm entfernen, wenn er unten ist
+            falling_stones.remove(stone)
+def draw_stones():
+    # Steine zeichnen
+    for stone in falling_stones:
+        pygame.draw.rect(screen, (255, 0, 0), stone)  # Zeichne den Stein in Rot
+def collide_with_stone():
+# Kollision mit Steinen prüfen
+    global running, player_posx, player_posy, player_startposx, player_startposy
+    player_rect = pygame.Rect(player_posx, player_posy, player_x, player_y)
+    for stone in falling_stones:
+        if player_rect.colliderect(stone):  # Spieler wird von Stein getroffen
+            print("Player hit by stone!")
+            blink_color(RED)
+            reset()
 
 
 clock = pygame.time.Clock()
 fps = 60
-# Hauptschleife
+stone_spawn_time = 0  # Zeit zum Erzeugen neuer Steine
 initialize_bricks()
+
+initialize_points(1)
+# Hauptschleife
 running = True
 while running:
-    global star
     current_time = pygame.time.get_ticks()
     keys_pressed = pygame.key.get_pressed()
     # Ereignisschleife
@@ -212,6 +346,9 @@ while running:
         running = False
     dt = clock.tick(fps) / 1000.0
 
+    if current_time - stone_spawn_time > 2000:  # 2000 Millisekunden = 2 Sekunden
+        initialize_stone()
+        stone_spawn_time = current_time
 
 
     # Bildschirm füllen
@@ -223,13 +360,25 @@ while running:
     # Spieler Bewegung
     jump()
     move()
+    
+    #Schüsse
     shoot(current_time)
     move_shots()
     draw_shots()
+
+    #Punktezähler
+    draw_points()
+    count_points()
+
     # Kollision
     collide_brick()
     collide_ground()
     collide_shots()
+
+      # Steine bewegen, zeichnen und auf Kollision prüfen
+    move_stones()
+    draw_stones()
+    collide_with_stone()  # Spieler trifft auf Stein?
 
     screen.blit(player_sprite, (player_posx, player_posy))
 
@@ -238,7 +387,7 @@ while running:
         y_vel += gravity * dt
         player_posy += y_vel * dt
 
-    # Display aktualisieren
+    # Display aktualisierena
     pygame.display.flip() 
     clock.tick(60)
 
