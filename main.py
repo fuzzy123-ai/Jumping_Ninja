@@ -29,14 +29,13 @@ YELLOW = (255, 215, 0)
 
 # Spieler Variablen
 player_posx = screen_width / 2
-
 player_posy = screen_height - 100
 player_startposx = screen_width / 2
 player_startposy = screen_height - 100
 player_x = 50
 player_y = 70
-player_vel = 20000
-player_jumpf = 56000
+player_vel = 10000
+player_jumpf = 40000
 moving_right = True
 down =  pygame.image.load('player_up.png')
 up = pygame.image.load('player_down.png')
@@ -75,11 +74,13 @@ shot_sprite = pygame.transform.scale(shot_sprite, (size, size))
 # Punkte
 stars = []
 points = 0
-star_image = pygame.image.load('star.png')
-star_image = pygame.transform.scale(star_image, (size, size))
+star_sprite = pygame.image.load('star.png')
+star_sprite = pygame.transform.scale(star_sprite, (size, size))
 
 # Stones
 falling_stones = []
+bomb_sprite = pygame.image.load('bomb.png')
+bomb_sprite = pygame.transform.scale(bomb_sprite, (50, 60))
 
 def reset():
     global player_posx, player_posy
@@ -108,6 +109,7 @@ def drawplayer():
         player_sprite = down
     player_sprite = pygame.transform.scale(player_sprite, (player_x, player_y))
     player = pygame.draw.rect(screen, WHITE,pygame.Rect(player_posx, player_posy, player_x, player_y) )
+    screen.blit(player_sprite, (player_posx, player_posy))
 def drawground():
     global ground
     ground = pygame.draw.rect(screen, BLACK, pygame.Rect(ground_posx, ground_posy, ground_x, ground_y))
@@ -201,7 +203,7 @@ def draw_points():
     # Sterne zeichnen
     for star in stars:  # Zeichne alle Sterne aus der Liste
         pygame.draw.rect(screen, (255, 215, 0), star)  # Goldene Farbe für die Sterne
-        screen.blit(star_image, (star.x, star.y))
+        screen.blit(star_sprite, (star.x, star.y))
         print(star.x,",", star.y)
 def count_points():
     global points
@@ -325,10 +327,10 @@ def move_stones(dt):
         stone.y += 500 * dt # Geschwindigkeit des fallenden Steins
         if stone.y > screen_height:  # Stein aus dem Bildschirm entfernen, wenn er unten ist
             falling_stones.remove(stone)
-def draw_stones():
-    # Steine zeichnen
+def draw_stones(stone_image):
     for stone in falling_stones:
-        pygame.draw.rect(screen, (255, 0, 0), stone)  # Zeichne den Stein in Rot
+        # Zeichne das Bild an der Position des Rechtecks (Kollisionserkennung bleibt)
+        screen.blit(stone_image, (stone.x, stone.y))  # Blit das PNG auf die aktuelle Position
 def collide_with_stone():
     global points
     player_rect = pygame.Rect(player_posx, player_posy, player_x, player_y)
@@ -390,12 +392,10 @@ while running:
 
       # Steine bewegen, zeichnen und auf Kollision prüfen
     move_stones(dt)
-    draw_stones()
+    draw_stones(bomb_sprite)
     collide_with_stone()  # Spieler trifft auf Stein?
 
     draw_score()
-
-    screen.blit(player_sprite, (player_posx, player_posy))
 
     # Gravitation anwenden
     if not on_ground:
