@@ -16,6 +16,9 @@ screen = pygame.display.set_mode((screen_width, screen_height))
 
 # Fenster-Titel
 pygame.display.set_caption("Pygame Boilerplate")
+# Text darstellen
+pygame.font.init()
+font = pygame.font.SysFont(None, 55) 
 
 # Farbe definieren (RGB)
 WHITE = (255, 255, 255)
@@ -158,14 +161,15 @@ def move(dt):
         player_sprite = pygame.transform.flip(player_sprite, True, False)
 def shoot(current_time):
     global last_shot_time
-    if keys_pressed[pygame.K_SPACE] and current_time - last_shot_time >= delay:
+    cooldown_time = 1000  # 1 Sekunde Cooldown in Millisekunden
+    if keys_pressed[pygame.K_SPACE] and current_time - last_shot_time >= cooldown_time:
         shot = {
             'rect': pygame.Rect(player_posx + (player_x // 2) - (size // 2), player_posy, size, size),  # Schuss mittig zum Spieler
             'speed': 5,
             'angle': 0,  # Initialer Winkel für die Drehung
-        } 
+        }
         shots.append(shot)
-        last_shot_time = current_time
+        last_shot_time = current_time  # Zeit des letzten Schusses aktualisieren
 def move_shots(dt):
     for shot in shots[:]:  # Kopie der Liste für sicheres Entfernen
         # if y_vel > 0: #runter
@@ -205,12 +209,11 @@ def count_points():
     for star in stars[:]:  # Kopie der Liste für sicheres Entfernen
         if player_rect.colliderect(star):  # Kollision überprüfen
             stars.remove(star)  # Stern entfernen
-            points += 1  # Punkte erhöhen
+            points += 1  # Punkt hinzufügen
             print(f"Points: {points}")
             # Setze einen neuen Stern auf eine der letzten (höchsten) Plattformen
             blink_color(YELLOW)
             reset()
-
 def place_star_on_top_platform():
     if len(bricks) > 0:
         top_platforms = bricks[-5:]  # Die letzten 5 Plattformen (höchste)
@@ -247,7 +250,10 @@ def place_star_on_top_platform():
             size, size  # Größe des Sterns
         )
         return star_rect
-
+def draw_score():
+    score_text = font.render(f'Punkte: {points}', True, YELLOW)  # Punkte in gelbem Text
+    text_rect = score_text.get_rect(center=(screen_width // 2, screen_height - 50))  # Position unten in der Mitte
+    screen.blit(score_text, text_rect)  # Text auf dem Bildschirm anzeigen
 
 
 # Collision
@@ -293,13 +299,20 @@ def collide_ground():
         player_posy = ground.top - player_y 
         y_vel = 0
 def collide_shots():
-    global shots
+    global shots, shot
     for shot in shots[:]:  # Kopie der Liste für sicheres Entfernen
         for brick in bricks:
             if shot['rect'].colliderect(brick):
                 shots.remove(shot)  # Schuss entfernen
                 break  # Bei Kollision mit einer Plattform abbrechen
-    ...           
+            # Kollision mit fallenden Steinen (roten Steinen)
+        # Kollision mit fallenden Steinen (roten Steinen)
+        for stone in falling_stones:
+            if shot['rect'].colliderect(stone):
+                shots.remove(shot)  # Schuss entfernen
+                falling_stones.remove(stone)  # Stein entfernen
+                break  # Kollision erkannt, abbrechen        
+        ...           
 
 # Falling Stones
 def initialize_stone():
@@ -317,13 +330,13 @@ def draw_stones():
     for stone in falling_stones:
         pygame.draw.rect(screen, (255, 0, 0), stone)  # Zeichne den Stein in Rot
 def collide_with_stone():
-# Kollision mit Steinen prüfen
-    global running, player_posx, player_posy, player_startposx, player_startposy
+    global points
     player_rect = pygame.Rect(player_posx, player_posy, player_x, player_y)
     for stone in falling_stones:
         if player_rect.colliderect(stone):  # Spieler wird von Stein getroffen
             print("Player hit by stone!")
             blink_color(RED)
+            points = 0  # Punktestand zurücksetzen
             reset()
 
 
@@ -379,6 +392,8 @@ while running:
     move_stones(dt)
     draw_stones()
     collide_with_stone()  # Spieler trifft auf Stein?
+
+    draw_score()
 
     screen.blit(player_sprite, (player_posx, player_posy))
 
