@@ -167,7 +167,7 @@ def shoot(current_time):
     if keys_pressed[pygame.K_SPACE] and current_time - last_shot_time >= cooldown_time:
         shot = {
             'rect': pygame.Rect(player_posx + (player_x // 2) - (size // 2), player_posy, size, size),  # Schuss mittig zum Spieler
-            'speed': 5,
+            'speed': 500,
             'angle': 0,  # Initialer Winkel für die Drehung
         }
         shots.append(shot)
@@ -178,7 +178,7 @@ def move_shots(dt):
         #     shot['rect'].y += shot['speed']
         # if y_vel <=0: #hoch
         #     shot['rect'].y -= shot['speed']  # Bewege den Schuss nach oben 
-        shot['rect'].y -= shot['speed'] 
+        shot['rect'].y -= shot['speed'] * dt
         shot['angle'] += 500 * dt  # Erhöhe den Winkel für die Drehung
         # Entferne den Schuss, wenn er den oberen Rand des Bildschirms verlässt
         if shot['rect'].y < 0:
@@ -202,7 +202,6 @@ def initialize_points(num_stars):
 def draw_points():
     # Sterne zeichnen
     for star in stars:  # Zeichne alle Sterne aus der Liste
-        pygame.draw.rect(screen, (255, 215, 0), star)  # Goldene Farbe für die Sterne
         screen.blit(star_sprite, (star.x, star.y))
         print(star.x,",", star.y)
 def count_points():
