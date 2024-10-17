@@ -32,8 +32,8 @@ player_startposx = screen_width / 2
 player_startposy = screen_height - 100
 player_x = 50
 player_y = 70
-player_vel = 200
-player_jumpf = 580
+player_vel = 20000
+player_jumpf = 56000
 moving_right = True
 down =  pygame.image.load('player_up.png')
 up = pygame.image.load('player_down.png')
@@ -47,7 +47,7 @@ ground_posy = screen_height - ground_y
 # Umgebungs Variablen
 gravity = 1000
 y_vel = 0
-x_vel = 20
+x_vel = 1000
 on_ground = False
 is_jumping = False
 
@@ -134,23 +134,23 @@ def draw_brick():
         pygame.draw.rect(screen, BLACK, brick)
 
 # Player
-def jump():
+def jump(dt):
     global y_vel, is_jumping, player_posy, on_ground, is_jumping
 
     if on_ground: #and keys_pressed[pygame.K_SPACE]:
-        y_vel = -player_jumpf
+        y_vel = -player_jumpf * dt
         #player_posy -= y_vel
         on_ground = False
         is_jumping = True
         print("Jump!")
-def move():
+def move(dt):
     global player_posx, player_sprite, moving_right
     border = 10
     if keys_pressed[pygame.K_a] and player_posx > border:
-        player_posx -= x_vel
+        player_posx -= x_vel * dt
         moving_right = False
     elif keys_pressed[pygame.K_d] and player_posx < screen_width - player_x - border:
-        player_posx += x_vel
+        player_posx += x_vel * dt
         moving_right = True
     else:
         ...
@@ -166,14 +166,14 @@ def shoot(current_time):
         } 
         shots.append(shot)
         last_shot_time = current_time
-def move_shots():
+def move_shots(dt):
     for shot in shots[:]:  # Kopie der Liste für sicheres Entfernen
         # if y_vel > 0: #runter
         #     shot['rect'].y += shot['speed']
         # if y_vel <=0: #hoch
         #     shot['rect'].y -= shot['speed']  # Bewege den Schuss nach oben 
         shot['rect'].y -= shot['speed'] 
-        shot['angle'] += 5  # Erhöhe den Winkel für die Drehung
+        shot['angle'] += 500 * dt  # Erhöhe den Winkel für die Drehung
         # Entferne den Schuss, wenn er den oberen Rand des Bildschirms verlässt
         if shot['rect'].y < 0:
             shots.remove(shot)
@@ -306,10 +306,10 @@ def initialize_stone():
     stone_posx = player_posx + randint(-50, 50)  # Zufällige X-Position für den Stein
     stone_rect = pygame.Rect(stone_posx, 0, 50, 50)  # Steingröße (50x50) und Startposition oben
     falling_stones.append(stone_rect)
-def move_stones():
+def move_stones(dt):
     # Steine bewegen
     for stone in falling_stones[:]:  # Kopie der Liste
-        stone.y += 5  # Geschwindigkeit des fallenden Steins
+        stone.y += 500 * dt # Geschwindigkeit des fallenden Steins
         if stone.y > screen_height:  # Stein aus dem Bildschirm entfernen, wenn er unten ist
             falling_stones.remove(stone)
 def draw_stones():
@@ -358,12 +358,12 @@ while running:
 
     draw_brick()
     # Spieler Bewegung
-    jump()
-    move()
+    jump(dt)
+    move(dt)
     
     #Schüsse
     shoot(current_time)
-    move_shots()
+    move_shots(dt)
     draw_shots()
 
     #Punktezähler
@@ -376,7 +376,7 @@ while running:
     collide_shots()
 
       # Steine bewegen, zeichnen und auf Kollision prüfen
-    move_stones()
+    move_stones(dt)
     draw_stones()
     collide_with_stone()  # Spieler trifft auf Stein?
 
